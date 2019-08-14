@@ -1,0 +1,1544 @@
+package io;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @ClassName RandTest01
+ * @Description 面向对象思想封装分割
+ * @Author chendapeng
+ * @Date 2019/6/9
+ **/
+public class SplitFile {
+    //源头
+    private File src;
+    //目的地（文件夹）
+    private String destDir;
+    //所有分割后的文件存储路径
+    private List<String> destPaths;
+    //每块大小
+    private int blockSize;
+    //块数：多少块
+    private int size;
+
+    public SplitFile(String srcPath, String destDir, int blockSize) {
+        this.src = new File(srcPath);
+        this.destDir = destDir;
+        this.blockSize = blockSize;
+        this.destPaths = new ArrayList<String>();
+        //初始化
+        init();
+    }
+
+    private void init(){
+        //总长度
+        long len =this.src.length();
+        //多少块
+        this.size = (int) Math.ceil(len*1.0/this.blockSize);
+        //路径
+        for(int i=0;i<size;i++){
+            this.destPaths.add(this.destDir+"/"+i+"-"+this.src.getName());
+        }
+    }
+
+    /**
+     * 分割
+     * 1.计算每一块的起始位置及大小
+     * 2.分割
+     */
+    private void split() throws IOException {
+        //总长度
+        long len = src.length();
+        //起始位置和实际大小
+        int beginPos = 0;
+        int actualSize = (int) (blockSize > len ? len : blockSize);
+        for (int i = 0; i < size; i++) {
+            beginPos = i * blockSize;
+            if (i == size - 1) {//最后一块
+                actualSize = (int) len;
+            } else {
+                actualSize = blockSize;
+                len -= actualSize; //剩余量
+            }
+            splitDetail(i, beginPos, actualSize);
+        }
+    }
+    /**
+     * 指定第i块、起始位置、实际长度
+     * @param i
+     * @param beginPos
+     * @param actualSize
+     * @throws IOException
+     */
+    //分块思想：起始位置，读取大小
+    private void splitDetail(int i ,int beginPos,int actualSize) throws IOException {
+        RandomAccessFile raf = new RandomAccessFile(this.src, "r");
+        RandomAccessFile raf2 = new RandomAccessFile(this.destPaths.get(i), "rw");
+        //随机读取
+        raf.seek(beginPos);
+        //读取
+        byte[] flush = new byte[1024];//缓冲容器
+        int len = -1;
+        while((len = raf.read(flush))!=-1) {
+            if (actualSize > len) {//获取本次读取的所有内容
+                raf2.write(flush, 0, len);
+                actualSize -= len;
+            } else {
+                raf2.write(flush, 0, actualSize);
+                break;
+            }
+        }
+        raf2.close();
+        raf.close();
+    }
+
+    public void merge(String destPath) throws IOException {
+        //输出流
+        OutputStream os =new BufferedOutputStream(new FileOutputStream(destPath,true));
+        //输入流
+        for(int i = 0;i<destPaths.size();i++){
+            InputStream is =new BufferedInputStream(new FileInputStream(destPaths.get(i)));
+            //拷贝
+            //操作（分段读取）
+            byte[] flush = new byte[1024];//缓冲容器
+            int len = -1;//接收长度
+            while((len=is.read(flush))!=-1){
+                os.write(flush,0,len);
+            }
+            os.flush();
+            os.close();
+            is.close();
+        }
+    }
+    public static void main(String[] args) throws IOException {
+        SplitFile sf = new SplitFile("G:\\Java\\IO3\\dest.txt","G:\\Java\\IO3\\src\\dest",1024);
+        sf.split();
+        
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @ClassName RandTest01
+ * @Description 面向对象思想封装分割
+ * @Author chendapeng
+ * @Date 2019/6/9
+ **/
+public class SplitFile {
+    //源头
+    private File src;
+    //目的地（文件夹）
+    private String destDir;
+    //所有分割后的文件存储路径
+    private List<String> destPaths;
+    //每块大小
+    private int blockSize;
+    //块数：多少块
+    private int size;
+
+    public SplitFile(String srcPath, String destDir, int blockSize) {
+        this.src = new File(srcPath);
+        this.destDir = destDir;
+        this.blockSize = blockSize;
+        this.destPaths = new ArrayList<String>();
+        //初始化
+        init();
+    }
+
+    private void init(){
+        //总长度
+        long len =this.src.length();
+        //多少块
+        this.size = (int) Math.ceil(len*1.0/this.blockSize);
+        //路径
+        for(int i=0;i<size;i++){
+            this.destPaths.add(this.destDir+"/"+i+"-"+this.src.getName());
+        }
+    }
+
+    /**
+     * 分割
+     * 1.计算每一块的起始位置及大小
+     * 2.分割
+     */
+    private void split() throws IOException {
+        //总长度
+        long len = src.length();
+        //起始位置和实际大小
+        int beginPos = 0;
+        int actualSize = (int) (blockSize > len ? len : blockSize);
+        for (int i = 0; i < size; i++) {
+            beginPos = i * blockSize;
+            if (i == size - 1) {//最后一块
+                actualSize = (int) len;
+            } else {
+                actualSize = blockSize;
+                len -= actualSize; //剩余量
+            }
+            splitDetail(i, beginPos, actualSize);
+        }
+    }
+    /**
+     * 指定第i块、起始位置、实际长度
+     * @param i
+     * @param beginPos
+     * @param actualSize
+     * @throws IOException
+     */
+    //分块思想：起始位置，读取大小
+    private void splitDetail(int i ,int beginPos,int actualSize) throws IOException {
+        RandomAccessFile raf = new RandomAccessFile(this.src, "r");
+        RandomAccessFile raf2 = new RandomAccessFile(this.destPaths.get(i), "rw");
+        //随机读取
+        raf.seek(beginPos);
+        //读取
+        byte[] flush = new byte[1024];//缓冲容器
+        int len = -1;
+        while((len = raf.read(flush))!=-1) {
+            if (actualSize > len) {//获取本次读取的所有内容
+                raf2.write(flush, 0, len);
+                actualSize -= len;
+            } else {
+                raf2.write(flush, 0, actualSize);
+                break;
+            }
+        }
+        raf2.close();
+        raf.close();
+    }
+
+    public void merge(String destPath) throws IOException {
+        //输出流
+        OutputStream os =new BufferedOutputStream(new FileOutputStream(destPath,true));
+        //输入流
+        for(int i = 0;i<destPaths.size();i++){
+            InputStream is =new BufferedInputStream(new FileInputStream(destPaths.get(i)));
+            //拷贝
+            //操作（分段读取）
+            byte[] flush = new byte[1024];//缓冲容器
+            int len = -1;//接收长度
+            while((len=is.read(flush))!=-1){
+                os.write(flush,0,len);
+            }
+            os.flush();
+            os.close();
+            is.close();
+        }
+    }
+    public static void main(String[] args) throws IOException {
+        SplitFile sf = new SplitFile("G:\\Java\\IO3\\dest.txt","G:\\Java\\IO3\\src\\dest",1024);
+        sf.split();
+
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @ClassName RandTest01
+ * @Description 面向对象思想封装分割
+ * @Author chendapeng
+ * @Date 2019/6/9
+ **/
+public class SplitFile {
+    //源头
+    private File src;
+    //目的地（文件夹）
+    private String destDir;
+    //所有分割后的文件存储路径
+    private List<String> destPaths;
+    //每块大小
+    private int blockSize;
+    //块数：多少块
+    private int size;
+
+    public SplitFile(String srcPath, String destDir, int blockSize) {
+        this.src = new File(srcPath);
+        this.destDir = destDir;
+        this.blockSize = blockSize;
+        this.destPaths = new ArrayList<String>();
+        //初始化
+        init();
+    }
+
+    private void init(){
+        //总长度
+        long len =this.src.length();
+        //多少块
+        this.size = (int) Math.ceil(len*1.0/this.blockSize);
+        //路径
+        for(int i=0;i<size;i++){
+            this.destPaths.add(this.destDir+"/"+i+"-"+this.src.getName());
+        }
+    }
+
+    /**
+     * 分割
+     * 1.计算每一块的起始位置及大小
+     * 2.分割
+     */
+    private void split() throws IOException {
+        //总长度
+        long len = src.length();
+        //起始位置和实际大小
+        int beginPos = 0;
+        int actualSize = (int) (blockSize > len ? len : blockSize);
+        for (int i = 0; i < size; i++) {
+            beginPos = i * blockSize;
+            if (i == size - 1) {//最后一块
+                actualSize = (int) len;
+            } else {
+                actualSize = blockSize;
+                len -= actualSize; //剩余量
+            }
+            splitDetail(i, beginPos, actualSize);
+        }
+    }
+    /**
+     * 指定第i块、起始位置、实际长度
+     * @param i
+     * @param beginPos
+     * @param actualSize
+     * @throws IOException
+     */
+    //分块思想：起始位置，读取大小
+    private void splitDetail(int i ,int beginPos,int actualSize) throws IOException {
+        RandomAccessFile raf = new RandomAccessFile(this.src, "r");
+        RandomAccessFile raf2 = new RandomAccessFile(this.destPaths.get(i), "rw");
+        //随机读取
+        raf.seek(beginPos);
+        //读取
+        byte[] flush = new byte[1024];//缓冲容器
+        int len = -1;
+        while((len = raf.read(flush))!=-1) {
+            if (actualSize > len) {//获取本次读取的所有内容
+                raf2.write(flush, 0, len);
+                actualSize -= len;
+            } else {
+                raf2.write(flush, 0, actualSize);
+                break;
+            }
+        }
+        raf2.close();
+        raf.close();
+    }
+
+    public void merge(String destPath) throws IOException {
+        //输出流
+        OutputStream os =new BufferedOutputStream(new FileOutputStream(destPath,true));
+        //输入流
+        for(int i = 0;i<destPaths.size();i++){
+            InputStream is =new BufferedInputStream(new FileInputStream(destPaths.get(i)));
+            //拷贝
+            //操作（分段读取）
+            byte[] flush = new byte[1024];//缓冲容器
+            int len = -1;//接收长度
+            while((len=is.read(flush))!=-1){
+                os.write(flush,0,len);
+            }
+            os.flush();
+            os.close();
+            is.close();
+        }
+    }
+    public static void main(String[] args) throws IOException {
+        SplitFile sf = new SplitFile("G:\\Java\\IO3\\dest.txt","G:\\Java\\IO3\\src\\dest",1024);
+        sf.split();
+
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @ClassName RandTest01
+ * @Description 面向对象思想封装分割
+ * @Author chendapeng
+ * @Date 2019/6/9
+ **/
+public class SplitFile {
+    //源头
+    private File src;
+    //目的地（文件夹）
+    private String destDir;
+    //所有分割后的文件存储路径
+    private List<String> destPaths;
+    //每块大小
+    private int blockSize;
+    //块数：多少块
+    private int size;
+
+    public SplitFile(String srcPath, String destDir, int blockSize) {
+        this.src = new File(srcPath);
+        this.destDir = destDir;
+        this.blockSize = blockSize;
+        this.destPaths = new ArrayList<String>();
+        //初始化
+        init();
+    }
+
+    private void init(){
+        //总长度
+        long len =this.src.length();
+        //多少块
+        this.size = (int) Math.ceil(len*1.0/this.blockSize);
+        //路径
+        for(int i=0;i<size;i++){
+            this.destPaths.add(this.destDir+"/"+i+"-"+this.src.getName());
+        }
+    }
+
+    /**
+     * 分割
+     * 1.计算每一块的起始位置及大小
+     * 2.分割
+     */
+    private void split() throws IOException {
+        //总长度
+        long len = src.length();
+        //起始位置和实际大小
+        int beginPos = 0;
+        int actualSize = (int) (blockSize > len ? len : blockSize);
+        for (int i = 0; i < size; i++) {
+            beginPos = i * blockSize;
+            if (i == size - 1) {//最后一块
+                actualSize = (int) len;
+            } else {
+                actualSize = blockSize;
+                len -= actualSize; //剩余量
+            }
+            splitDetail(i, beginPos, actualSize);
+        }
+    }
+    /**
+     * 指定第i块、起始位置、实际长度
+     * @param i
+     * @param beginPos
+     * @param actualSize
+     * @throws IOException
+     */
+    //分块思想：起始位置，读取大小
+    private void splitDetail(int i ,int beginPos,int actualSize) throws IOException {
+        RandomAccessFile raf = new RandomAccessFile(this.src, "r");
+        RandomAccessFile raf2 = new RandomAccessFile(this.destPaths.get(i), "rw");
+        //随机读取
+        raf.seek(beginPos);
+        //读取
+        byte[] flush = new byte[1024];//缓冲容器
+        int len = -1;
+        while((len = raf.read(flush))!=-1) {
+            if (actualSize > len) {//获取本次读取的所有内容
+                raf2.write(flush, 0, len);
+                actualSize -= len;
+            } else {
+                raf2.write(flush, 0, actualSize);
+                break;
+            }
+        }
+        raf2.close();
+        raf.close();
+    }
+
+    public void merge(String destPath) throws IOException {
+        //输出流
+        OutputStream os =new BufferedOutputStream(new FileOutputStream(destPath,true));
+        //输入流
+        for(int i = 0;i<destPaths.size();i++){
+            InputStream is =new BufferedInputStream(new FileInputStream(destPaths.get(i)));
+            //拷贝
+            //操作（分段读取）
+            byte[] flush = new byte[1024];//缓冲容器
+            int len = -1;//接收长度
+            while((len=is.read(flush))!=-1){
+                os.write(flush,0,len);
+            }
+            os.flush();
+            os.close();
+            is.close();
+        }
+    }
+    public static void main(String[] args) throws IOException {
+        SplitFile sf = new SplitFile("G:\\Java\\IO3\\dest.txt","G:\\Java\\IO3\\src\\dest",1024);
+        sf.split();
+
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+

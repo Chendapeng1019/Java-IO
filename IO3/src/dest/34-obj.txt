@@ -1,0 +1,42 @@
+System.out.println(age);
+        //对象的数据还原
+        Object str = ois.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+package io;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * @ClassName RandTest01
+ * @Description 面向对象思想封装分割
+ * @Author chendapeng
+ * @Date 2019/6/9
+ **/
+public class SplitFile {
+    //源头
+    private File src;
+    //目的地（文件夹）
+    private String destDir;
+    //�

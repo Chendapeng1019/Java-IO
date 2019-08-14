@@ -1,0 +1,36 @@
+ int blockSize;
+    //块数：多少块
+    private int size;
+
+    public SplitFile(String srcPath, String destDir, int blockSize) {
+        this.src = new File(srcPath);
+        this.destDir = destDir;
+        this.blockSize = blockSize;
+        this.destPaths = new ArrayList<String>();
+        //初始化
+        init();
+    }
+
+    private void init(){
+        //总长度
+        long len =this.src.length();
+        //多少块
+        this.size = (int) Math.ceil(len*1.0/this.blockSize);
+        //路径
+        for(int i=0;i<size;i++){
+            this.destPaths.add(this.destDir+"/"+i+"-"+this.src.getName());
+        }
+    }
+
+    /**
+     * 分割
+     * 1.计算每一块的起始位置及大小
+     * 2.分割
+     */
+    private void split() throws IOException {
+        //总长度
+        long len = src.length();
+        //起始位置和实际大小
+        int beginPos = 0;
+        int actualSize = (int) (blockSize > len ? len : blockSize);
+        for (int i = 0; i

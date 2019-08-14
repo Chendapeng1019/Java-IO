@@ -1,0 +1,42 @@
+s.readObject();
+        Object date = ois.readObject();
+        Object employee = ois.readObject();
+
+        if(str instanceof String){
+            String strObj = (String) str;
+            System.out.println(strObj);
+        }
+
+        if(date instanceof Date){
+            Date dateObj = (Date) date;
+            System.out.println(dateObj);
+        }
+
+        if(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+
+
+package io;
+
+import java.io.*;
+import java.util.Date;
+
+/**
+ * @ClassName DataTest01
+ * @Description
+ * 对象流
+ * 1.先写出后读取
+ * 2.读取的顺序与写出保存一致
+ *3.不是所有的对象都可以序列化，必须实现Serializable
+ * ObjectOutputStream
+ * ObjectInputStream
+ * @Author chendapeng
+ * @Date 2019/6/2
+ **/
+public class ObjectTest02 {
+    public static void main(String[] args) t

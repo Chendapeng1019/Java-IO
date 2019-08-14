@@ -1,0 +1,8 @@
+f(employee instanceof Employee){
+            Employee empObject = (Employee) employee;
+            System.out.println(empObject.getName()+"-->"+empObject.getSalary());
+        }
+        ois.close();
+    }
+}
+

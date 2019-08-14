@@ -1,0 +1,31 @@
+//获取本次读取的所有内容
+                raf2.write(flush, 0, len);
+                actualSize -= len;
+            } else {
+                raf2.write(flush, 0, actualSize);
+                break;
+            }
+        }
+        raf2.close();
+        raf.close();
+    }
+
+    public void merge(String destPath) throws IOException {
+        //输出流
+        OutputStream os =new BufferedOutputStream(new FileOutputStream(destPath,true));
+        //输入流
+        for(int i = 0;i<destPaths.size();i++){
+            InputStream is =new BufferedInputStream(new FileInputStream(destPaths.get(i)));
+            //拷贝
+            //操作（分段读取）
+            byte[] flush = new byte[1024];//缓冲容器
+            int len = -1;//接收长度
+            while((len=is.read(flush))!=-1){
+                os.write(flush,0,len);
+            }
+            os.flush();
+            os.close();
+            is.close();
+        }
+    }
+    public static void main(String[] args)

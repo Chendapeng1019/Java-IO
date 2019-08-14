@@ -1,0 +1,27 @@
+ain(String[] args) throws IOException, ClassNotFoundException {
+        //写出-->序列化
+
+        ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream("obj.txt")));
+        //操作数据类型 + 数据
+        oos.writeUTF("编码辛酸泪");
+        oos.writeInt(18);
+        oos.writeBoolean(false);
+        oos.writeChar('a');
+
+        //对象
+        oos.writeObject("谁解其中味");
+        oos.writeObject(new Date());
+        Employee emp = new Employee("马云",400);
+        oos.writeObject(emp);
+        oos.flush();
+        oos.close();
+        //读取 -->反序列化
+        ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(new FileInputStream("obj.txt")));
+        //顺序与写出一致
+        String msg = ois.readUTF();
+        int age = ois.readInt();
+        boolean flag = ois.readBoolean();
+        char ch = ois.readChar();
+        System.out.println(age);
+        //对象的数据还原
+        Objec
